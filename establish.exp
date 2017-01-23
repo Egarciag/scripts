@@ -1,0 +1,40 @@
+#!/usr/bin/expect 
+set timeout 10
+set oldmode [stty -echo -raw]
+set host [lindex $argv 0]
+set user [lindex $argv 1]
+
+if {[llength $argv] == 0} {
+		send_user "Usage: scriptname hostname username(Optional)\n"
+				exit 1
+} elseif {[llength $argv] == 1} {
+		spawn ssh $host
+} elseif {[llength $argv] == 2} {
+		spawn ssh $user@$host
+} else {
+		send_user "Error\n"
+				exit 1
+}
+
+send_user "\n###### Connecting to $host ######\n"
+
+send_user "Pasword? \n"
+set timeout -1
+expect_user -re "(.*)\n"
+send_user "\n"
+eval stty $oldmode
+
+expect {
+		timeout {send_user "\Connection to $host timed out\n"; exit 1}
+		eof {send_user "\nSSH failure for $host\n"; exit 1 }
+		"yes/no)?" {send "yes\r"; exp_continue}
+		"*assword:" {send "$expect_out(1,string)\r"; exp_continue}
+		"Please enter your DataCenter AD password:" {send "$expect_out(1,string)\r"; exp_continue}
+		"Press Enter to Continue." {send "\r"; exp_continue}
+		-re "\[#>$]"
+}
+
+send "uptime\r"
+expect -re "\[#>$]"
+send "exit\r"
+send_user "\n"
